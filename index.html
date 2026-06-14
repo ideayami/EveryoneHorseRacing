@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>競馬収支記録</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f5f3;
+    --bg-tertiary: #eeede9;
+    --text: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --border: rgba(0,0,0,0.12);
+    --border-hover: rgba(0,0,0,0.25);
+    --green-bg: #EAF3DE; --green-text: #3B6D11;
+    --red-bg: #FCEBEB; --red-text: #A32D2D;
+    --blue-bg: #E6F1FB; --blue-text: #185FA5;
+    --radius-md: 8px; --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1c;
+      --bg-secondary: #252525;
+      --bg-tertiary: #2e2e2e;
+      --text: #f0f0f0;
+      --text-secondary: #999;
+      --border: rgba(255,255,255,0.12);
+      --border-hover: rgba(255,255,255,0.28);
+      --green-bg: #173404; --green-text: #97C459;
+      --red-bg: #501313; --red-text: #F09595;
+      --blue-bg: #042C53; --blue-text: #85B7EB;
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; background: var(--bg-tertiary); color: var(--text); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  .page { max-width: 700px; margin: 0 auto; padding: 2rem 1rem 4rem; }
+  h1 { font-size: 22px; font-weight: 600; margin-bottom: 0.25rem; }
+  .subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 2rem; }
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
+  .card-title { font-size: 14px; font-weight: 600; margin-bottom: 1rem; color: var(--text); }
+  label { display: block; font-size: 12px; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; margin-top: 10px; }
+  label:first-of-type { margin-top: 0; }
+  input, select, textarea { display: block; width: 100%; padding: 8px 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--bg-secondary); border: 0.5px solid var(--border); border-radius: var(--radius-md); outline: none; transition: border-color 0.15s; }
+  input:focus, select:focus, textarea:focus { border-color: var(--border-hover); box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 20px; border-radius: var(--radius-md); font-size: 14px; font-weight: 500; cursor: pointer; font-family: inherit; border: none; transition: opacity 0.15s, background 0.15s; }
+  .btn-primary { background: var(--text); color: var(--bg); }
+  .btn-primary:hover { opacity: 0.82; }
+  .btn-secondary { background: transparent; color: var(--text); border: 0.5px solid var(--border-hover); }
+  .btn-secondary:hover { background: var(--bg-secondary); }
+  .btn-sm { padding: 4px 10px; font-size: 12px; }
+  .btn-danger { background: transparent; color: var(--red-text); border: 0.5px solid var(--red-text); opacity: 0.7; }
+  .btn-danger:hover { opacity: 1; }
+  .btn-row { display: flex; gap: 10px; align-items: center; margin-top: 1.25rem; flex-wrap: wrap; }
+  .tab-bar { display: flex; border-bottom: 0.5px solid var(--border); margin-bottom: 1.5rem; }
+  .tab { padding: 10px 18px; font-size: 14px; cursor: pointer; border: none; background: transparent; color: var(--text-secondary); font-family: inherit; border-bottom: 2px solid transparent; margin-bottom: -0.5px; transition: color 0.15s; }
+  .tab.active { color: var(--text); border-bottom-color: var(--text); font-weight: 600; }
+  .metric-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 0.85rem 1rem; }
+  .metric-label { font-size: 11px; color: var(--text-secondary); font-weight: 500; margin-bottom: 4px; text-transform: none; }
+  .metric-value { font-size: 20px; font-weight: 600; color: var(--text); }
+  .metric-value.pos { color: var(--green-text); }
+  .metric-value.neg { color: var(--red-text); }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 7px; border-radius: 4px; font-weight: 500; }
+  .badge-win { background: var(--green-bg); color: var(--green-text); }
+  .badge-lose { background: var(--red-bg); color: var(--red-text); }
+  .badge-even { background: var(--bg-secondary); color: var(--text-secondary); }
+  .record-list { display: flex; flex-direction: column; gap: 8px; }
+  .record { display: flex; align-items: center; gap: 12px; background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; }
+  .record-date { font-size: 12px; color: var(--text-secondary); min-width: 68px; flex-shrink: 0; }
+  .record-body { flex: 1; min-width: 0; }
+  .record-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .record-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+  .record-right { text-align: right; flex-shrink: 0; }
+  .record-pnl { font-size: 15px; font-weight: 600; }
+  .record-pnl.pos { color: var(--green-text); }
+  .record-pnl.neg { color: var(--red-text); }
+  .status { font-size: 13px; padding: 9px 14px; border-radius: var(--radius-md); margin-bottom: 1rem; display: none; }
+  .status.show { display: block; }
+  .status.success { background: var(--green-bg); color: var(--green-text); }
+  .status.error { background: var(--red-bg); color: var(--red-text); }
+  .status.info { background: var(--blue-bg); color: var(--blue-text); }
+  .empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-secondary); font-size: 14px; }
+  .empty-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  .hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; line-height: 1.6; }
+  .divider { height: 0.5px; background: var(--border); margin: 1rem 0; }
+  .token-wrap { position: relative; }
+  .token-wrap input { padding-right: 40px; }
+  .token-eye { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-secondary); font-size: 18px; line-height: 1; padding: 2px; }
+  .repo-info { font-size: 13px; color: var(--text-secondary); background: var(--bg-secondary); border-radius: var(--radius-md); padding: 10px 14px; margin-bottom: 1rem; font-family: monospace; }
+  @media (max-width: 520px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .metric-row { grid-template-columns: 1fr 1fr; }
+    .metric-row .metric:last-child { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>🏇 競馬収支記録</h1>
+  <p class="subtitle">データはGitHubリポジトリに自動保存されます</p>
+
+  <!-- Setup view -->
+  <div id="view-setup">
+    <div class="card">
+      <p class="card-title">GitHub設定</p>
+      <label>Personal Access Token</label>
+      <div class="token-wrap">
+        <input type="password" id="cfg-token" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+        <button class="token-eye" onclick="toggleToken()" aria-label="表示切替">👁</button>
+      </div>
+      <p class="hint">GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)<br>→「Generate new token」→ <strong>repo</strong> にチェック → 生成してコピー</p>
+      <div class="grid-2" style="margin-top:10px;">
+        <div>
+          <label>GitHubユーザー名</label>
+          <input type="text" id="cfg-user" placeholder="your-username" />
+        </div>
+        <div>
+          <label>リポジトリ名</label>
+          <input type="text" id="cfg-repo" placeholder="keiba-records" />
+        </div>
+      </div>
+      <p class="hint" style="margin-top:8px;">リポジトリはprivateで自動作成されます（既存のリポジトリも使用可）</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="saveConfig()">接続して開始</button>
+      </div>
+    </div>
+    <div id="setup-status" class="status"></div>
+  </div>
+
+  <!-- Main view -->
+  <div id="view-main" style="display:none;">
+    <div id="main-status" class="status"></div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchTab('records')" id="tab-records">記録一覧</button>
+      <button class="tab" onclick="switchTab('add')" id="tab-add">＋ 新規入力</button>
+      <button class="tab" onclick="switchTab('settings')" id="tab-settings" style="margin-left:auto;">設定</button>
+    </div>
+
+    <!-- Records panel -->
+    <div id="panel-records">
+      <div class="metric-row">
+        <div class="metric">
+          <p class="metric-label">総収支</p>
+          <p class="metric-value" id="stat-pnl">¥0</p>
+        </div>
+        <div class="metric">
+          <p class="metric-label">合計賭け金</p>
+          <p class="metric-value" id="stat-bet">¥0</p>
+        </div>
+        <div class="metric">
+          <p class="metric-label">回収率</p>
+          <p class="metric-value" id="stat-roi">—</p>
+        </div>
+      </div>
+      <div id="records-list" class="record-list"></div>
+    </div>
+
+    <!-- Add panel -->
+    <div id="panel-add" style="display:none;">
+      <div class="card">
+        <p class="card-title">新しい記録を追加</p>
+        <div class="grid-2">
+          <div>
+            <label>開催日</label>
+            <input type="date" id="f-date" />
+          </div>
+          <div>
+            <label>開催場</label>
+            <select id="f-venue">
+              <option value="">選択...</option>
+              <option>東京</option><option>中山</option><option>阪神</option>
+              <option>京都</option><option>中京</option><option>小倉</option>
+              <option>福島</option><option>新潟</option><option>函館</option>
+              <option>札幌</option>
+            </select>
+          </div>
+        </div>
+        <label>レース名</label>
+        <input type="text" id="f-race" placeholder="例：第3回東京6R　春風特別" />
+        <div class="grid-3" style="margin-top:10px;">
+          <div>
+            <label>馬券の種類</label>
+            <select id="f-type">
+              <option value="">選択...</option>
+              <option>単勝</option><option>複勝</option><option>枠連</option>
+              <option>馬連</option><option>ワイド</option><option>馬単</option>
+              <option>三連複</option><option>三連単</option>
+            </select>
+          </div>
+          <div>
+            <label>賭け金（円）</label>
+            <input type="number" id="f-bet" placeholder="1000" min="0" step="100" />
+          </div>
+          <div>
+            <label>払戻金（円）</label>
+            <input type="number" id="f-return" placeholder="0" min="0" step="100" />
+          </div>
+        </div>
+        <label>メモ（任意）</label>
+        <input type="text" id="f-memo" placeholder="例：◎1番 ○3番 → 本命外れ" />
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addRecord()">GitHubに保存</button>
+          <button class="btn btn-secondary" onclick="switchTab('records')">キャンセル</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings panel -->
+    <div id="panel-settings" style="display:none;">
+      <div class="card">
+        <p class="card-title">接続中のリポジトリ</p>
+        <div class="repo-info" id="settings-repo-info">—</div>
+        <p class="hint">データは <code>records.json</code> として保存されています。GitHubで直接確認・編集も可能です。</p>
+        <div class="divider"></div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="reloadData()">データを再読み込み</button>
+          <button class="btn btn-danger btn-sm" onclick="resetConfig()">設定をリセット</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const STORAGE_KEY = 'keiba_gh_cfg_v2';
+let config = null;
+let records = [];
+let fileSha = null;
+
+function $(id) { return document.getElementById(id); }
+
+function showStatus(id, msg, type) {
+  const el = $(id);
+  el.textContent = msg;
+  el.className = 'status show ' + type;
+  if (type === 'success') setTimeout(() => { el.className = 'status'; }, 3000);
+}
+
+function toggleToken() {
+  const inp = $('cfg-token');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function loadConfig() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) config = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function persistConfig() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(config)); } catch(e) {}
+}
+
+function switchTab(name) {
+  ['records','add','settings'].forEach(t => {
+    $(('panel-' + t)).style.display = t === name ? 'block' : 'none';
+    $('tab-' + t).classList.toggle('active', t === name);
+  });
+}
+
+async function ghApi(path, method, body) {
+  const opts = {
+    method: method || 'GET',
+    headers: {
+      'Authorization': 'token ' + config.token,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch('https://api.github.com' + path, opts);
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || 'GitHub APIエラー (' + res.status + ')');
+  return json;
+}
+
+async function ensureRepo() {
+  try {
+    await ghApi('/repos/' + config.user + '/' + config.repo);
+  } catch(e) {
+    if (e.message.includes('Not Found')) {
+      await ghApi('/user/repos', 'POST', {
+        name: config.repo,
+        private: true,
+        description: '競馬収支記録',
+        auto_init: true
+      });
+    } else throw e;
+  }
+}
+
+async function loadRecords() {
+  try {
+    const data = await ghApi('/repos/' + config.user + '/' + config.repo + '/contents/records.json');
+    fileSha = data.sha;
+    records = JSON.parse(decodeURIComponent(escape(atob(data.content.replace(/\n/g,'')))));
+  } catch(e) {
+    if (e.message.includes('Not Found')) { records = []; fileSha = null; }
+    else throw e;
+  }
+  renderRecords();
+}
+
+async function saveRecords() {
+  const json = JSON.stringify(records, null, 2);
+  const encoded = btoa(unescape(encodeURIComponent(json)));
+  const body = {
+    message: '収支記録を更新 ' + new Date().toLocaleDateString('ja-JP'),
+    content: encoded
+  };
+  if (fileSha) body.sha = fileSha;
+  const res = await ghApi('/repos/' + config.user + '/' + config.repo + '/contents/records.json', 'PUT', body);
+  fileSha = res.content.sha;
+}
+
+function renderRecords() {
+  const list = $('records-list');
+  if (!records.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">🏇</div>まだ記録がありません<br>「＋ 新規入力」から記録してみましょう</div>';
+    $('stat-pnl').textContent = '¥0';
+    $('stat-pnl').className = 'metric-value';
+    $('stat-bet').textContent = '¥0';
+    $('stat-roi').textContent = '—';
+    return;
+  }
+
+  let totalBet = 0, totalReturn = 0;
+  records.forEach(r => { totalBet += r.bet || 0; totalReturn += r.returnAmt || 0; });
+  const pnl = totalReturn - totalBet;
+  const roi = totalBet > 0 ? Math.round(totalReturn / totalBet * 100) : 0;
+
+  const pnlEl = $('stat-pnl');
+  pnlEl.textContent = (pnl >= 0 ? '+' : '') + pnl.toLocaleString('ja-JP') + '円';
+  pnlEl.className = 'metric-value' + (pnl > 0 ? ' pos' : pnl < 0 ? ' neg' : '');
+  $('stat-bet').textContent = totalBet.toLocaleString('ja-JP') + '円';
+  const roiEl = $('stat-roi');
+  roiEl.textContent = roi + '%';
+  roiEl.className = 'metric-value' + (roi >= 100 ? ' pos' : roi > 0 && roi < 100 ? '' : ' neg');
+
+  const sorted = [...records].sort((a, b) => new Date(b.date) - new Date(a.date));
+  list.innerHTML = sorted.map(r => {
+    const idx = records.indexOf(r);
+    const pnl = (r.returnAmt || 0) - (r.bet || 0);
+    const pnlStr = (pnl >= 0 ? '+' : '') + pnl.toLocaleString('ja-JP') + '円';
+    const badgeCls = pnl > 0 ? 'badge-win' : pnl < 0 ? 'badge-lose' : 'badge-even';
+    const pnlCls = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : '';
+    return `<div class="record">
+      <span class="record-date">${r.date}</span>
+      <div class="record-body">
+        <div class="record-name">${r.venue ? r.venue + ' ' : ''}${r.race || '—'} <span class="badge ${badgeCls}">${r.type || ''}</span></div>
+        <div class="record-sub">賭 ${(r.bet||0).toLocaleString('ja-JP')}円 → 払 ${(r.returnAmt||0).toLocaleString('ja-JP')}円${r.memo ? ' ／ ' + r.memo : ''}</div>
+      </div>
+      <div class="record-right">
+        <div class="record-pnl ${pnlCls}">${pnlStr}</div>
+        <button class="btn btn-danger btn-sm" style="margin-top:5px;" onclick="deleteRecord(${idx})">削除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteRecord(idx) {
+  if (!confirm('この記録を削除しますか？')) return;
+  records.splice(idx, 1);
+  showStatus('main-status', 'GitHubに保存中...', 'info');
+  try {
+    await saveRecords();
+    renderRecords();
+    showStatus('main-status', '削除してGitHubに保存しました', 'success');
+  } catch(e) {
+    showStatus('main-status', '保存失敗: ' + e.message, 'error');
+  }
+}
+
+async function addRecord() {
+  const date = $('f-date').value;
+  const venue = $('f-venue').value;
+  const race = $('f-race').value.trim();
+  const type = $('f-type').value;
+  const bet = parseInt($('f-bet').value) || 0;
+  const returnAmt = parseInt($('f-return').value) || 0;
+  const memo = $('f-memo').value.trim();
+  if (!date) { showStatus('main-status', '開催日を入力してください', 'error'); return; }
+  if (!race) { showStatus('main-status', 'レース名を入力してください', 'error'); return; }
+  if (bet <= 0) { showStatus('main-status', '賭け金を入力してください', 'error'); return; }
+  const rec = { id: Date.now(), date, venue, race, type, bet, returnAmt, memo, createdAt: new Date().toISOString() };
+  records.push(rec);
+  showStatus('main-status', 'GitHubに保存中...', 'info');
+  try {
+    await saveRecords();
+    $('f-race').value = ''; $('f-bet').value = ''; $('f-return').value = ''; $('f-memo').value = '';
+    renderRecords();
+    switchTab('records');
+    showStatus('main-status', 'GitHubに保存しました ✓', 'success');
+  } catch(e) {
+    records.pop();
+    showStatus('main-status', '保存失敗: ' + e.message, 'error');
+  }
+}
+
+async function saveConfig() {
+  const token = $('cfg-token').value.trim();
+  const user = $('cfg-user').value.trim();
+  const repo = $('cfg-repo').value.trim();
+  if (!token || !user || !repo) { showStatus('setup-status', '全ての項目を入力してください', 'error'); return; }
+  showStatus('setup-status', 'GitHubに接続中...', 'info');
+  config = { token, user, repo };
+  try {
+    await ensureRepo();
+    persistConfig();
+    await initMain();
+  } catch(e) {
+    config = null;
+    showStatus('setup-status', '接続失敗: ' + e.message, 'error');
+  }
+}
+
+async function initMain() {
+  $('view-setup').style.display = 'none';
+  $('view-main').style.display = 'block';
+  $('settings-repo-info').textContent = config.user + '/' + config.repo + '  →  records.json';
+  $('f-date').value = new Date().toISOString().split('T')[0];
+  showStatus('main-status', 'データを読み込み中...', 'info');
+  try {
+    await loadRecords();
+    showStatus('main-status', 'GitHubから読み込みました ✓', 'success');
+  } catch(e) {
+    showStatus('main-status', '読み込み失敗: ' + e.message, 'error');
+  }
+}
+
+async function reloadData() {
+  showStatus('main-status', '再読み込み中...', 'info');
+  try { await loadRecords(); showStatus('main-status', '再読み込みしました ✓', 'success'); }
+  catch(e) { showStatus('main-status', '失敗: ' + e.message, 'error'); }
+}
+
+function resetConfig() {
+  if (!confirm('設定をリセットしますか？')) return;
+  try { localStorage.removeItem(STORAGE_KEY); } catch(e) {}
+  config = null; records = []; fileSha = null;
+  $('view-main').style.display = 'none';
+  $('view-setup').style.display = 'block';
+  $('cfg-token').value = ''; $('cfg-user').value = ''; $('cfg-repo').value = '';
+}
+
+(function init() {
+  loadConfig();
+  if (config && config.token && config.user && config.repo) initMain();
+  else $('view-setup').style.display = 'block';
+})();
+</script>
+</body>
+</html>
